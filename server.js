@@ -6,8 +6,11 @@ const cors = require('cors');
 const app = express();
 
 mongoose.connect(process.env.MONGODB_URI, {
- 
-});
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+  .then(() => console.log('MongoDB connected...'))
+  .catch(err => console.error(err));
 
 app.use(cors());
 app.use(express.json());
@@ -17,29 +20,68 @@ const History = require('./models/History');
 const User = require('./models/User');
 
 app.post('/api/questions', async (req, res) => {
-  const { question, options, correctOption } = req.body;
-  const newQuestion = new Question({ question, options, correctOption });
-  await newQuestion.save();
-  res.status(201).send(newQuestion);
+  try {
+    const { question, options, correctOption, answerOfQuestion, board, class: selectedClass, subject, chapter, topic, questionType, difficulty } = req.body;
+
+    if (questionType === 'mcq') {
+      if (!options || options.length === 0 || !correctOption) {
+        return res.status(400).send("Options and correct option are required for MCQ questions");
+      }
+    } else {
+      if (!answerOfQuestion) {
+        return res.status(400).send("Answer of question is required for non-MCQ questions");
+      }
+    }
+
+    const newQuestion = new Question({ 
+      question, 
+      options: questionType === 'mcq' ? options : undefined,
+      correctOption: questionType === 'mcq' ? correctOption : undefined,
+      answerOfQuestion: questionType !== 'mcq' ? answerOfQuestion : undefined,
+      board,
+      class: selectedClass,
+      subject,
+      chapter,
+      topic,
+      questionType,
+      difficulty
+    });
+
+    await newQuestion.save();
+    res.status(201).send(newQuestion);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Server Error");
+  }
 });
 
 app.get('/api/questions', async (req, res) => {
-  const questions = await Question.aggregate([{ $sample: { size: 2 } }]);
-  res.send(questions);
+  try {
+    const questions = await Question.aggregate([{ $sample: { size: 2 } }]);
+    res.send(questions);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Server Error");
+  }
 });
 
 app.post('/api/submit', async (req, res) => {
-  const { username, answers } = req.body;
-  let user = await User.findOne({ username });
-  if (!user) {
-    user = new User({ username });
-    await user.save();
+  try {
+    const { username, answers } = req.body;
+    let user = await User.findOne({ username });
+    if (!user) {
+      user = new User({ username });
+      await user.save();
+    }
+
+    const newHistory = new History({ username, answers });
+    await newHistory.save();
+
+    res.status(201).send(newHistory);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Server Error");
   }
-
-  const newHistory = new History({ username, answers });
-  await newHistory.save();
-
-  res.status(201).send(newHistory);
 });
 
 app.get('/api/history/:username', async (req, res) => {
