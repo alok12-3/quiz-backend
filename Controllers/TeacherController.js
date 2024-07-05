@@ -3,7 +3,6 @@ const Student = require('../models/Student');
 const Question = require('../models/Question');
 const Quiz = require('../models/Quiz');
 
-// Create a new teacher
 exports.createTeacher = async (req, res) => {
   try {
     const teacher = new Teacher(req.body);
@@ -14,7 +13,6 @@ exports.createTeacher = async (req, res) => {
   }
 };
 
-// Get a teacher by username
 exports.getTeacher = async (req, res) => {
   try {
     const teacher = await Teacher.findOne({ username: req.params.username })
@@ -29,8 +27,18 @@ exports.getTeacher = async (req, res) => {
   }
 };
 
+exports.getClassSections = async (req, res) => {
+  try {
+    const teacher = await Teacher.findById(req.params.id).populate('classSections.students');
+    if (!teacher) {
+      return res.status(404).json({ message: 'Teacher not found' });
+    }
+    res.json(teacher.classSections);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
 
-// Get bookmarked questions of a teacher
 exports.getBookmarkedQuestions = async (req, res) => {
   try {
     const teacher = await Teacher.findById(req.params.id).populate('bookmarkedQuestions');
@@ -43,7 +51,6 @@ exports.getBookmarkedQuestions = async (req, res) => {
   }
 };
 
-// Get quizzes of a teacher
 exports.getQuizzes = async (req, res) => {
   try {
     const teacher = await Teacher.findById(req.params.id).populate('quizzes');
@@ -56,7 +63,6 @@ exports.getQuizzes = async (req, res) => {
   }
 };
 
-// Get question details
 exports.getQuestionDetails = async (req, res) => {
   try {
     const question = await Question.findById(req.params.questionId);
@@ -69,7 +75,6 @@ exports.getQuestionDetails = async (req, res) => {
   }
 };
 
-// Add class section and students to a teacher
 exports.addClassSection = async (req, res) => {
   try {
     const { class: className, section, students } = req.body;
@@ -88,7 +93,6 @@ exports.addClassSection = async (req, res) => {
   }
 };
 
-// Bookmark a question
 exports.bookmarkQuestion = async (req, res) => {
   try {
     const { questionId } = req.body;
@@ -108,7 +112,6 @@ exports.bookmarkQuestion = async (req, res) => {
   }
 };
 
-// Create a quiz
 exports.createQuiz = async (req, res) => {
   try {
     const { title, questions } = req.body;
@@ -133,30 +136,61 @@ exports.createQuiz = async (req, res) => {
   }
 };
 
-// Add student to class section
+// exports.addStudentToClassSection = async (req, res) => {
+//   try {
+//     const { teacherId, classSectionId, studentId } = req.body;
+
+//     const teacher = await Teacher.findById(teacherId);
+//     if (!teacher) {
+//       return res.status(404).json({ message: 'Teacher not found' });
+//     }
+
+//     const classSection = teacher.classSections.id(classSectionId);
+//     if (!classSection) {
+//       return res.status(404).json({ message: 'Class section not found' });
+//     }
+
+//     classSection.students.push(studentId);
+
+//     await teacher.save();
+
+//     res.status(200).json({ message: 'Student added to class section successfully' });
+//   } catch (error) {
+//     res.status(400).json({ message: error.message });
+//   }
+// };
+
 exports.addStudentToClassSection = async (req, res) => {
   try {
-    const { teacherId, classSectionId, studentId } = req.body;
+    const { teacherId, classSectionId, studentId, username, name, class: studentClass, section, age, address, phoneNumber, schoolId } = req.body;
 
-    // Find the teacher by ID
     const teacher = await Teacher.findById(teacherId);
     if (!teacher) {
       return res.status(404).json({ message: 'Teacher not found' });
     }
 
-    // Find the class section within the teacher's classSections
     const classSection = teacher.classSections.id(classSectionId);
     if (!classSection) {
       return res.status(404).json({ message: 'Class section not found' });
     }
 
-    // Add the student ID to the class section's students array
-    classSection.students.push(studentId);
+    const newStudent = new Student({
+      username,
+      name,
+      class: studentClass,
+      section,
+      age,
+      address,
+      phoneNumber,
+      schoolId
+    });
 
-    // Save the updated teacher document
+    await newStudent.save();
+
+    classSection.students.push(newStudent._id);
     await teacher.save();
 
-    res.status(200).json({ message: 'Student added to class section successfully' });
+    res.status(200).json(newStudent);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }

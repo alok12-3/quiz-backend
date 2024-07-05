@@ -10,7 +10,7 @@ const {
   addClassSection,
   bookmarkQuestion,
   createQuiz,
-  addStudentToClassSection
+  addStudentToClassSection // Ensure this function is correctly imported
 } = require('../Controllers/TeacherController');
 
 router.post('/', createTeacher);
@@ -22,6 +22,6 @@ router.get('/question/:questionId', getQuestionDetails);
 router.post('/:id/class-section', addClassSection);
 router.post('/:id/bookmark-question', bookmarkQuestion);
 router.post('/:id/create-quiz', createQuiz);
-router.post('/add-student', addStudentToClassSection);
+router.post('username/students', addStudentToClassSection);
 
 module.exports = router;
