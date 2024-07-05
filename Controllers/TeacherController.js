@@ -1,0 +1,163 @@
+const Teacher = require('../models/Teacher');
+const Student = require('../models/Student');
+const Question = require('../models/Question');
+const Quiz = require('../models/Quiz');
+
+// Create a new teacher
+exports.createTeacher = async (req, res) => {
+  try {
+    const teacher = new Teacher(req.body);
+    await teacher.save();
+    res.status(201).json({ username: teacher.username });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+// Get a teacher by username
+exports.getTeacher = async (req, res) => {
+  try {
+    const teacher = await Teacher.findOne({ username: req.params.username })
+      .populate('bookmarkedQuestions', 'question _id')
+      .populate('quizzes', 'title _id');
+    if (!teacher) {
+      return res.status(404).json({ message: 'Teacher not found' });
+    }
+    res.json(teacher);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+
+// Get bookmarked questions of a teacher
+exports.getBookmarkedQuestions = async (req, res) => {
+  try {
+    const teacher = await Teacher.findById(req.params.id).populate('bookmarkedQuestions');
+    if (!teacher) {
+      return res.status(404).json({ message: 'Teacher not found' });
+    }
+    res.json(teacher.bookmarkedQuestions);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+// Get quizzes of a teacher
+exports.getQuizzes = async (req, res) => {
+  try {
+    const teacher = await Teacher.findById(req.params.id).populate('quizzes');
+    if (!teacher) {
+      return res.status(404).json({ message: 'Teacher not found' });
+    }
+    res.json(teacher.quizzes);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+// Get question details
+exports.getQuestionDetails = async (req, res) => {
+  try {
+    const question = await Question.findById(req.params.questionId);
+    if (!question) {
+      return res.status(404).json({ message: 'Question not found' });
+    }
+    res.json(question);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+// Add class section and students to a teacher
+exports.addClassSection = async (req, res) => {
+  try {
+    const { class: className, section, students } = req.body;
+    const teacher = await Teacher.findById(req.params.id);
+    if (!teacher) {
+      return res.status(404).json({ message: 'Teacher not found' });
+    }
+
+    const studentsIds = await Student.find({ _id: { $in: students } }, '_id');
+    teacher.classSections.push({ class: className, section, students: studentsIds });
+    await teacher.save();
+
+    res.json(teacher);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+// Bookmark a question
+exports.bookmarkQuestion = async (req, res) => {
+  try {
+    const { questionId } = req.body;
+    const teacher = await Teacher.findById(req.params.id);
+    if (!teacher) {
+      return res.status(404).json({ message: 'Teacher not found' });
+    }
+
+    if (!teacher.bookmarkedQuestions.includes(questionId)) {
+      teacher.bookmarkedQuestions.push(questionId);
+      await teacher.save();
+    }
+
+    res.json(teacher);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+// Create a quiz
+exports.createQuiz = async (req, res) => {
+  try {
+    const { title, questions } = req.body;
+    const teacher = await Teacher.findById(req.params.id);
+    if (!teacher) {
+      return res.status(404).json({ message: 'Teacher not found' });
+    }
+
+    const quiz = new Quiz({
+      title,
+      questions,
+      createdBy: teacher._id
+    });
+    await quiz.save();
+
+    teacher.quizzes.push(quiz._id);
+    await teacher.save();
+
+    res.status(201).json(quiz);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+// Add student to class section
+exports.addStudentToClassSection = async (req, res) => {
+  try {
+    const { teacherId, classSectionId, studentId } = req.body;
+
+    // Find the teacher by ID
+    const teacher = await Teacher.findById(teacherId);
+    if (!teacher) {
+      return res.status(404).json({ message: 'Teacher not found' });
+    }
+
+    // Find the class section within the teacher's classSections
+    const classSection = teacher.classSections.id(classSectionId);
+    if (!classSection) {
+      return res.status(404).json({ message: 'Class section not found' });
+    }
+
+    // Add the student ID to the class section's students array
+    classSection.students.push(studentId);
+
+    // Save the updated teacher document
+    await teacher.save();
+
+    res.status(200).json({ message: 'Student added to class section successfully' });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};

@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const teacherRoutes = require('./routes/TeacherRoutes');
 
 const app = express();
 
@@ -18,6 +19,11 @@ app.use(express.json());
 const Question = require('./models/Question');
 const History = require('./models/History');
 const User = require('./models/User');
+const Student = require('./models/Student');
+const Quiz = require('./models/Quiz');
+const Teacher = require('./models/Teacher');
+
+app.use('/api/teachers', teacherRoutes);
 
 app.post('/api/questions', async (req, res) => {
   try {
