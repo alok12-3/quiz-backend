@@ -168,6 +168,79 @@ app.put('/api/classes/add-teacher', async (req, res) => {
   }
 });
 
+// // Add teacher to classes and classes to teacher
+// app.post('/api/teachers/:teacherId/classes', async (req, res) => {
+//   const { teacherId } = req.params;
+//   const { classIds } = req.body;
+
+//   try {
+//     const teacher = await Teacher.findById(teacherId);
+//     if (!teacher) {
+//       return res.status(404).send("Teacher not found");
+//     }
+
+//     // Update teacher's classes
+//     teacher.className = [...new Set([...teacher.className, ...classIds])];
+//     await teacher.save();
+
+//     // Update each class with the teacher's ID
+//     await Class.updateMany(
+//       { _id: { $in: classIds } },
+//       { $addToSet: { teachers: teacherId } }
+//     );
+
+//     res.status(200).send("Classes updated successfully");
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).send("Server Error");
+//   }
+// });
+
+// Add teacher to classes and classes to teacher
+app.post('/api/teachers/:teacherId/classes', async (req, res) => {
+  const { teacherId } = req.params;
+  const { classIds } = req.body;
+
+  try {
+    const teacher = await Teacher.findById(teacherId);
+    if (!teacher) {
+      return res.status(404).send("Teacher not found");
+    }
+
+    // Update teacher's classes using $addToSet to ensure uniqueness
+    await Teacher.updateOne(
+      { _id: teacherId },
+      { $addToSet: { className: { $each: classIds } } }
+    );
+
+    // Update each class with the teacher's ID using $addToSet to ensure uniqueness
+    await Class.updateMany(
+      { _id: { $in: classIds } },
+      { $addToSet: { teachers: teacherId } }
+    );
+
+    res.status(200).send("Classes updated successfully");
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Server Error");
+  }
+});
+
+
+// Fetch classes by IDs
+app.post('/api/classes/by-ids', async (req, res) => {
+  const { classIds } = req.body;
+
+  try {
+    const classes = await Class.find({ _id: { $in: classIds } });
+    res.status(200).json(classes);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Server Error");
+  }
+});
+
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
