@@ -22,8 +22,11 @@ const User = require('./models/User');
 const Student = require('./models/Student');
 const Quiz = require('./models/Quiz');
 const Teacher = require('./models/Teacher');
+const Class = require('./models/Class');
 
 app.use('/api/teachers', teacherRoutes);
+
+
 
 app.post('/api/questions', async (req, res) => {
   try {
@@ -118,7 +121,59 @@ app.get('/api/history/:username', async (req, res) => {
   }
 });
 
+
+
+// Create a class
+app.post('/api/schools', async (req, res) => {
+  const { className, year, grade, section, schoolId } = req.body;
+  try {
+      const newClass = new Class({
+          className,
+          year,
+          grade,
+          section,
+          schoolId
+      });
+      const savedClass = await newClass.save();
+      res.status(201).json(savedClass);
+  } catch (error) {
+      console.error('Error creating class:', error);
+      res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// API to fetch all classes
+app.get('/api/classes', async (req, res) => {
+  try {
+    const classes = await Class.find();
+    res.status(200).json(classes);
+  } catch (error) {
+    console.error('Error fetching classes:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// Update classes by adding teacher ID
+app.put('/api/classes/add-teacher', async (req, res) => {
+  const { teacherId, classIds } = req.body;
+  try {
+    const updateResult = await Class.updateMany(
+      { _id: { $in: classIds } },
+      { $addToSet: { teachers: teacherId } }
+    );
+    res.status(200).json(updateResult);
+  } catch (error) {
+    console.error('Error updating classes:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+
+
+

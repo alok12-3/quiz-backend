@@ -2,6 +2,7 @@ const Teacher = require('../models/Teacher');
 const Student = require('../models/Student');
 const Question = require('../models/Question');
 const Quiz = require('../models/Quiz');
+const Class = require('../models/Class');
 
 exports.createTeacher = async (req, res) => {
   try {
@@ -193,5 +194,39 @@ exports.addStudentToClassSection = async (req, res) => {
     res.status(200).json(newStudent);
   } catch (error) {
     res.status(400).json({ message: error.message });
+  }
+};
+
+exports.addClassToTeacher = async (req, res) => {
+  const teacherId = req.params.id;
+  const { classId } = req.body;
+
+  try {
+      // Add teacher to the class
+      const updatedClass = await Class.findByIdAndUpdate(
+          classId,
+          { $addToSet: { teachers: teacherId }, updatedAt: Date.now() },
+          { new: true }
+      );
+
+      if (!updatedClass) {
+          return res.status(404).json({ message: 'Class not found' });
+      }
+
+      // Add class to the teacher
+      const updatedTeacher = await Teacher.findByIdAndUpdate(
+          teacherId,
+          { $addToSet: { className: classId }, updatedAt: Date.now() },
+          { new: true }
+      );
+
+      if (!updatedTeacher) {
+          return res.status(404).json({ message: 'Teacher not found' });
+      }
+
+      res.status(200).json(updatedTeacher);
+  } catch (error) {
+      console.error('Error adding class to teacher:', error);
+      res.status(500).json({ message: 'Server Error' });
   }
 };

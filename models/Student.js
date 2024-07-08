@@ -9,7 +9,7 @@ const studentSchema = new mongoose.Schema({
   age: { type: Number, required: true },
   address: { type: String, required: true },
   phoneNumber: { type: String, required: true },
-  teachers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Teacher'}],
+  //teachers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Teacher'}],
   assignments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Quiz'}],
   correctquestions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Question' }],
   wrongquestions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Question' }],
