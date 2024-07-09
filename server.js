@@ -242,6 +242,43 @@ app.post('/api/classes/by-ids', async (req, res) => {
 
 
 
+app.post('/api/classes/:classId/add-quiz', async (req, res) => {
+  const { classId } = req.params;
+  const { quizId } = req.body;
+
+  try {
+    const classObj = await Class.findById(classId);
+    if (!classObj) {
+      return res.status(404).send("Class not found");
+    }
+
+    // Add the quiz ID to the class using $addToSet to avoid duplicates
+    await Class.updateOne(
+      { _id: classId },
+      { $addToSet: { quizId: quizId } }  // Ensure this matches the field name in the database
+    );
+
+    res.status(200).send("Quiz assigned to class successfully");
+  } catch (error) {
+    console.error('Error assigning quiz:', error.stack);
+    res.status(500).send("Server Error");
+  }
+});
+
+
+
+// Fetch all quizzes
+app.get('/api/quizzes', async (req, res) => {
+  try {
+    const quizzes = await Quiz.find();
+    res.status(200).json(quizzes);
+  } catch (error) {
+    console.error('Error fetching quizzes:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

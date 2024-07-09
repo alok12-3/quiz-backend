@@ -44,6 +44,16 @@ const classSchema = new Schema({
   teachers: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Teacher'
+  }],
+
+  studentsId: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Student'
+  }],
+
+  quizId: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Quiz'
   }]
 }, { timestamps: true });
 
