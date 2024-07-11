@@ -1,5 +1,5 @@
 const Teacher = require('../models/Teacher');
-const Student = require('../models/Student');
+
 const Question = require('../models/Question');
 const Quiz = require('../models/Quiz');
 const Class = require('../models/Class');
@@ -137,65 +137,7 @@ exports.createQuiz = async (req, res) => {
   }
 };
 
-// exports.addStudentToClassSection = async (req, res) => {
-//   try {
-//     const { teacherId, classSectionId, studentId } = req.body;
 
-//     const teacher = await Teacher.findById(teacherId);
-//     if (!teacher) {
-//       return res.status(404).json({ message: 'Teacher not found' });
-//     }
-
-//     const classSection = teacher.classSections.id(classSectionId);
-//     if (!classSection) {
-//       return res.status(404).json({ message: 'Class section not found' });
-//     }
-
-//     classSection.students.push(studentId);
-
-//     await teacher.save();
-
-//     res.status(200).json({ message: 'Student added to class section successfully' });
-//   } catch (error) {
-//     res.status(400).json({ message: error.message });
-//   }
-// };
-
-exports.addStudentToClassSection = async (req, res) => {
-  try {
-    const { teacherId, classSectionId, studentId, username, name, class: studentClass, section, age, address, phoneNumber, schoolId } = req.body;
-
-    const teacher = await Teacher.findById(teacherId);
-    if (!teacher) {
-      return res.status(404).json({ message: 'Teacher not found' });
-    }
-
-    const classSection = teacher.classSections.id(classSectionId);
-    if (!classSection) {
-      return res.status(404).json({ message: 'Class section not found' });
-    }
-
-    const newStudent = new Student({
-      username,
-      name,
-      class: studentClass,
-      section,
-      age,
-      address,
-      phoneNumber,
-      schoolId
-    });
-
-    await newStudent.save();
-
-    classSection.students.push(newStudent._id);
-    await teacher.save();
-
-    res.status(200).json(newStudent);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-};
 
 exports.addClassToTeacher = async (req, res) => {
   const teacherId = req.params.id;
