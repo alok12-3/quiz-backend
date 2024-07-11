@@ -25,8 +25,6 @@ router.get('/question/:questionId', getQuestionDetails);
 router.post('/:id/class-section', addClassSection);
 router.post('/:id/bookmark-question', bookmarkQuestion);
 router.post('/:id/create-quiz', createQuiz);
-
-
 router.post('/:id/add-class', addClassToTeacher);
 
 

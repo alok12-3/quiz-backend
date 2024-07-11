@@ -272,6 +272,24 @@ app.post('/api/new-student', async (req, res) => {
   }
 });
 
+
+// to login student with username
+
+app.get('/api/student/:username', async (req, res) => {
+  try {
+    const username = req.params.username;
+    const student = await NewStudent.findOne({ username });
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+    res.json(student);
+  } catch (error) {
+    console.error('Error fetching student:', error);
+    res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+});
+
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
