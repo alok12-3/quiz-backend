@@ -19,7 +19,7 @@ app.use(express.json());
 const Question = require('./models/Question');
 const History = require('./models/History');
 const User = require('./models/User');
-
+const Response = require('./models/StudentsResponse');
 const Quiz = require('./models/Quiz');
 const Teacher = require('./models/Teacher');
 const Class = require('./models/Class');
@@ -202,7 +202,7 @@ app.post('/api/teachers/:teacherId/classes', async (req, res) => {
 });
 
 
-// Fetch classes by IDs
+// Fetch classes by ID for students
 app.post('/api/classes/by-ids', async (req, res) => {
   const { classIds } = req.body;
 
@@ -214,6 +214,7 @@ app.post('/api/classes/by-ids', async (req, res) => {
     res.status(500).send("Server Error");
   }
 });
+
 
 
 
@@ -253,13 +254,78 @@ app.get('/api/quizzes', async (req, res) => {
   }
 });
 
+// fetch quiz by id
+app.post('/api/quiz/by-ids', async (req, res) => {
+  const { quizId } = req.body;
+
+  try {
+    const quiz = await Quiz.find({ _id: { $in: quizId } });
+    res.status(200).json(quiz);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Server Error");
+  }
+});
 
 //   ************************STUDENTS API******************************//
 
+// app.post('/api/new-student', async (req, res) => {
+//   try {
+//     const { username, name, class: studentClass, section, id, age, address, phoneNumber, teachers, assignments, correctquestions, wrongquestions, totalquestions, schoolId, studentResponse } = req.body;
+//     const newStudent = new NewStudent({ username, name, class: studentClass, section, id, age, address, phoneNumber, teachers, assignments, correctquestions, wrongquestions, totalquestions, schoolId, studentResponse });
+//     const savedStudent = await newStudent.save();
+//     res.status(201).json(savedStudent);
+//   } catch (error) {
+//     console.error('Error creating student:', error);
+//     if (error.code === 11000) {
+//       res.status(400).json({ message: 'Duplicate key error: Username or ID already exists' });
+//     } else {
+//       res.status(500).json({ message: 'Server Error', error: error.message });
+//     }
+//   }
+// });
+
+
+// to add new student
+
 app.post('/api/new-student', async (req, res) => {
   try {
-    const { username, name, class: studentClass, section, id, age, address, phoneNumber, teachers, assignments, correctquestions, wrongquestions, totalquestions, schoolId, studentResponse } = req.body;
-    const newStudent = new NewStudent({ username, name, class: studentClass, section, id, age, address, phoneNumber, teachers, assignments, correctquestions, wrongquestions, totalquestions, schoolId, studentResponse });
+    const { 
+      username, 
+      name, 
+      classId, 
+      section, 
+      id, 
+      age, 
+      address, 
+      phoneNumber, 
+      teachers, 
+      assignments, 
+      correctquestions, 
+      wrongquestions, 
+      totalquestions, 
+      schoolId, 
+      studentResponse 
+    } = req.body;
+
+    const newStudent = new NewStudent({ 
+      username, 
+      name, 
+      classId, 
+      section, 
+      id, 
+      age, 
+      address, 
+      phoneNumber, 
+      teachers, 
+      assignments, 
+      correctquestions, 
+      wrongquestions, 
+      totalquestions, 
+      schoolId, 
+      studentResponse 
+    });
+
     const savedStudent = await newStudent.save();
     res.status(201).json(savedStudent);
   } catch (error) {
@@ -271,6 +337,7 @@ app.post('/api/new-student', async (req, res) => {
     }
   }
 });
+
 
 
 // to login student with username
@@ -288,6 +355,88 @@ app.get('/api/student/:username', async (req, res) => {
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
+
+
+
+// give it quiz id and it will fetch all questions at the time
+app.get('/api/quizzes/:quizId/questions', async (req, res) => {
+  const { quizId } = req.params;
+
+  try {
+    // Find the quiz by ID
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) {
+      return res.status(404).send('Quiz not found');
+    }
+
+    // Extract question IDs from the quiz
+    const questionIds = quiz.questions;
+
+    // Fetch questions by their IDs
+    const questions = await Question.find({ _id: { $in: questionIds } });
+
+    res.status(200).json(questions);
+  } catch (error) {
+    console.error('Error fetching questions:', error);
+    res.status(500).send('Server Error');
+  }
+});
+
+
+
+
+
+
+
+app.post('/api/responses', async (req, res) => {
+  const { studentId, quizId, answers } = req.body;
+
+  try {
+    // Check if the student and quiz exist
+    const student = await NewStudent.findById(studentId);
+    const quiz = await Quiz.findById(quizId);
+    if (!student || !quiz) {
+      return res.status(404).send('Student or Quiz not found');
+    }
+
+    // Create a new response
+    const newResponse = new Response({
+      student: studentId,
+      quizzes: [{
+        quiz: quizId,
+        answers: answers.map(answer => ({
+          questionId: answer.questionId,
+          questionstring: answer.questionstring,
+          answer: answer.answer
+        }))
+      }]
+    });
+
+    await newResponse.save();
+    res.status(201).send('Response saved successfully');
+  } catch (error) {
+    console.error('Error saving response:', error);
+    res.status(500).send('Server Error');
+  }
+});
+
+
+
+
+app.get('/api/responses/student/:studentId', async (req, res) => {
+  const { studentId } = req.params;
+
+  try {
+    const responses = await Response.find({ student: studentId }).populate('quizzes.quiz').populate('quizzes.answers.questionId');
+    res.status(200).json(responses);
+  } catch (error) {
+    console.error('Error fetching responses:', error);
+    res.status(500).send('Server Error');
+  }
+});
+
+
+
 
 
 const PORT = process.env.PORT || 5000;

@@ -5,7 +5,8 @@ const responseSchema = new mongoose.Schema({
   quizzes: [{
     quiz: { type: mongoose.Schema.Types.ObjectId, ref: 'Quiz' },
     answers: [{
-      question: { type: mongoose.Schema.Types.ObjectId, ref: 'Question' },
+      questionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Question' },
+      questionstring: String, 
       answer: String
     }]
   }]
