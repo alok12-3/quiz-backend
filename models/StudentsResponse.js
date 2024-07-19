@@ -7,7 +7,8 @@ const responseSchema = new mongoose.Schema({
     answers: [{
       questionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Question' },
       questionstring: String, 
-      answer: String
+      answer: String,
+      geminiresponse: String
     }]
   }]
 });
