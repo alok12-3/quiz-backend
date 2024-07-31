@@ -26,8 +26,8 @@ const Class = require('./models/Class');
 const NewStudent = require('./models/NewStudent');
 
 app.use('/api/teachers', teacherRoutes);
-
-
+const userRoutes = require('./routes/UserRoutes');
+app.use('/api/users', userRoutes);
 
 app.post('/api/questions', async (req, res) => {
   try {
@@ -67,7 +67,7 @@ app.post('/api/questions', async (req, res) => {
 
 app.get('/api/questions', async (req, res) => {
   try {
-    const questions = await Question.aggregate([{ $sample: { size: 2 } }]);
+    const questions = await Question.aggregate([{ $sample: { size: 4 } }]);
     res.send(questions);
   } catch (error) {
     console.error(error);
@@ -267,26 +267,7 @@ app.post('/api/quiz/by-ids', async (req, res) => {
   }
 });
 
-//   ************************STUDENTS API******************************//
 
-// app.post('/api/new-student', async (req, res) => {
-//   try {
-//     const { username, name, class: studentClass, section, id, age, address, phoneNumber, teachers, assignments, correctquestions, wrongquestions, totalquestions, schoolId, studentResponse } = req.body;
-//     const newStudent = new NewStudent({ username, name, class: studentClass, section, id, age, address, phoneNumber, teachers, assignments, correctquestions, wrongquestions, totalquestions, schoolId, studentResponse });
-//     const savedStudent = await newStudent.save();
-//     res.status(201).json(savedStudent);
-//   } catch (error) {
-//     console.error('Error creating student:', error);
-//     if (error.code === 11000) {
-//       res.status(400).json({ message: 'Duplicate key error: Username or ID already exists' });
-//     } else {
-//       res.status(500).json({ message: 'Server Error', error: error.message });
-//     }
-//   }
-// });
-
-
-// to add new student
 
 app.post('/api/new-student', async (req, res) => {
   try {
@@ -388,41 +369,30 @@ app.get('/api/quizzes/:quizId/questions', async (req, res) => {
 
 
 
-// app.post('/api/responses', async (req, res) => {
-//   const { studentId, quizId, answers } = req.body;
+
+const multer = require('multer');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+const upload = multer({ dest: 'uploads/' });
+
+const apiKey = "AIzaSyDsEvPf8X0M03OkSaDqmyqy1EZubalOg7Y"; // Ensure the API key is set in your environment variables
+const genAI = new GoogleGenerativeAI(apiKey);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+   
+// const runocr = async (imageUrl, questionstrings) => {
+//   const prompt = `the image will provide you a answer of question ${questionstrings} based on ncert bord and you have to judge the answer according to marking patern used by teachers. so at first give summery that the answer provided is correct, could be improved, or wrong or excellent then you have to give response in 3 steps that is first step- it is "correct" or "wrong" or "could be improved" second step- what is good things in answer, third step- what could be improved if it is not a perfect answer written, fourth step- give the perfect answer for that question`;
 
 //   try {
-//     // Check if the student and quiz exist
-//     const student = await NewStudent.findById(studentId);
-//     const quiz = await Quiz.findById(quizId);
-//     if (!student || !quiz) {
-//       return res.status(404).send('Student or Quiz not found');
-//     }
-
-//     // Create a new response
-//     const newResponse = new Response({
-//       student: studentId,
-//       quizzes: [{
-//         quiz: quizId,
-//         answers: answers.map(answer => ({
-//           questionId: answer.questionId,
-//           questionstring: answer.questionstring,
-//           answer: answer.answer
-//         }))
-//       }]
-//     });
-
-//     await newResponse.save();
-//     res.status(201).send('Response saved successfully');
+//     const result = await model.generateContent([prompt, { imageUrl }]);
+//     return result.response.text();
 //   } catch (error) {
-//     console.error('Error saving response:', error);
-//     res.status(500).send('Server Error');
+//     throw new Error(`Error processing image: ${error.message}`);
 //   }
-// });
+// };
 
-
+// // Endpoint to handle response submission with image URLs
 // app.post('/api/responses', async (req, res) => {
-//   const { studentId, quizId, answers } = req.body;
+//   const { studentId, quizId, imageUrls, questionIds, questionstrings } = req.body;
 
 //   try {
 //     // Check if the student and quiz exist
@@ -431,6 +401,22 @@ app.get('/api/quizzes/:quizId/questions', async (req, res) => {
 //     if (!student || !quiz) {
 //       return res.status(404).send('Student or Quiz not found');
 //     }
+
+//     // Process each image URL
+//     const answers = await Promise.all(
+//       questionIds.map(async (questionId, index) => {
+//         const imageUrl = imageUrls[questionId];
+//         const questionstring = questionstrings[index];
+//         const geminiresponse = await runocr(imageUrl, questionstring);
+//         return {
+//           questionId,
+//           questionstring,
+//           answer: geminiresponse,
+//           geminiresponse,
+//           imageUrl,
+//         };
+//       })
+//     );
 
 //     // Check if a response already exists for the student
 //     let response = await Response.findOne({ student: studentId });
@@ -439,11 +425,7 @@ app.get('/api/quizzes/:quizId/questions', async (req, res) => {
 //       // If the response exists, add the new quiz to the quizzes array
 //       response.quizzes.push({
 //         quiz: quizId,
-//         answers: answers.map(answer => ({
-//           questionId: answer.questionId,
-//           questionstring: answer.questionstring,
-//           answer: answer.answer
-//         }))
+//         answers,
 //       });
 //     } else {
 //       // If the response does not exist, create a new response
@@ -451,12 +433,8 @@ app.get('/api/quizzes/:quizId/questions', async (req, res) => {
 //         student: studentId,
 //         quizzes: [{
 //           quiz: quizId,
-//           answers: answers.map(answer => ({
-//             questionId: answer.questionId,
-//             questionstring: answer.questionstring,
-//             answer: answer.answer
-//           }))
-//         }]
+//           answers,
+//         }],
 //       });
 //     }
 
@@ -469,19 +447,23 @@ app.get('/api/quizzes/:quizId/questions', async (req, res) => {
 //   }
 // });
 
+const cloudinary = require('cloudinary').v2;
 
-const multer = require('multer');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+cloudinary.config({
+  cloud_name: 'dummrfevq',
+  api_key: '186528687344235',
+  api_secret: 'PDc8hU4KzMPff3mFrLWTPezK0a4',
+});
 
-const upload = multer({ dest: 'uploads/' });
+const runocr = async (imagePath, mimeType, questionstrings) => {
+  const prompt = `the image will provide you a  answer of question ${questionstrings} based on ncert bord and you have to judge the answer according to marking patern used by teachers. so at first give summery that the answer provided is correct, could be improved, or wrong or excellent then you have to give response in 3 steps that is first step- it is "correct" or "wrong" or "could be improved" second step- what is good things in answer, third step- what could be improved if it is not a perfect answer written, fourth step- give the perfect answer for that question`;
 
-const apiKey = "AIzaSyDsEvPf8X0M03OkSaDqmyqy1EZubalOg7Y"; // Ensure the API key is set in your environment variables
-const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-    
 
-const runocr = async (imagePath, mimeType) => {
-  const prompt = "the image will provide you a question and answer of social science subject of class 10 ncert bord and you have to judge the answer according to marking patern used by teachers. so at first give summery that the answer provided is correct, could be improved, or wrong or excellent then you have to give response in 3 way that is first what is good things in answer, second what could be improved if it is not a perfect answer written and last thing is assign marks out of 5 at last give the perfect answer for that question";
+  const cloudinaryResponse = await cloudinary.uploader.upload(imagePath, {
+    folder: 'quizapp',
+  });
+
+  const imageUrl = cloudinaryResponse.secure_url;
 
   // Read image file and encode it to base64
   const imageData = require('fs').readFileSync(imagePath).toString('base64');
@@ -495,7 +477,7 @@ const runocr = async (imagePath, mimeType) => {
 
   try {
     const result = await model.generateContent([prompt, image]);
-    return result.response.text();
+    return { answer: result.response.text(), imageUrl };
   } catch (error) {
     throw new Error(`Error processing image: ${error.message}`);
   }
@@ -503,7 +485,7 @@ const runocr = async (imagePath, mimeType) => {
 
 // Endpoint to handle response submission with image upload
 app.post('/api/responses', upload.array('images'), async (req, res) => {
-  const { studentId, quizId, questionIds, questionstrings } = req.body;
+  const { studentId, quizId, questionIds, questionstrings, answers} = req.body;
   const files = req.files;
 
   try {
@@ -517,12 +499,13 @@ app.post('/api/responses', upload.array('images'), async (req, res) => {
     // Process each uploaded image
     const answers = await Promise.all(
       files.map(async (file, index) => {
-        const geminiresponse = await runocr(file.path, file.mimetype);
+        const { answer, imageUrl } = await runocr(file.path, file.mimetype, questionstrings[index]);
         return {
           questionId: questionIds[index],
           questionstring: questionstrings[index],
-          answer: geminiresponse,
-          geminiresponse: geminiresponse,
+          answer: answer,
+          geminiresponse: answer,
+          imageUrl: imageUrl,
         };
       })
     );
@@ -603,3 +586,150 @@ app.listen(PORT, () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// app.post('/api/responses', async (req, res) => {
+//   const { studentId, quizId, answers } = req.body;
+
+//   try {
+//     // Check if the student and quiz exist
+//     const student = await NewStudent.findById(studentId);
+//     const quiz = await Quiz.findById(quizId);
+//     if (!student || !quiz) {
+//       return res.status(404).send('Student or Quiz not found');
+//     }
+
+//     // Create a new response
+//     const newResponse = new Response({
+//       student: studentId,
+//       quizzes: [{
+//         quiz: quizId,
+//         answers: answers.map(answer => ({
+//           questionId: answer.questionId,
+//           questionstring: answer.questionstring,
+//           answer: answer.answer
+//         }))
+//       }]
+//     });
+
+//     await newResponse.save();
+//     res.status(201).send('Response saved successfully');
+//   } catch (error) {
+//     console.error('Error saving response:', error);
+//     res.status(500).send('Server Error');
+//   }
+// });
+
+
+// app.post('/api/responses', async (req, res) => {
+//   const { studentId, quizId, answers } = req.body;
+
+//   try {
+//     // Check if the student and quiz exist
+//     const student = await NewStudent.findById(studentId);
+//     const quiz = await Quiz.findById(quizId);
+//     if (!student || !quiz) {
+//       return res.status(404).send('Student or Quiz not found');
+//     }
+
+//     // Check if a response already exists for the student
+//     let response = await Response.findOne({ student: studentId });
+
+//     if (response) {
+//       // If the response exists, add the new quiz to the quizzes array
+//       response.quizzes.push({
+//         quiz: quizId,
+//         answers: answers.map(answer => ({
+//           questionId: answer.questionId,
+//           questionstring: answer.questionstring,
+//           answer: answer.answer
+//         }))
+//       });
+//     } else {
+//       // If the response does not exist, create a new response
+//       response = new Response({
+//         student: studentId,
+//         quizzes: [{
+//           quiz: quizId,
+//           answers: answers.map(answer => ({
+//             questionId: answer.questionId,
+//             questionstring: answer.questionstring,
+//             answer: answer.answer
+//           }))
+//         }]
+//       });
+//     }
+
+//     // Save the response to the database
+//     await response.save();
+//     res.status(201).send('Response saved successfully');
+//   } catch (error) {
+//     console.error('Error saving response:', error);
+//     res.status(500).send('Server Error');
+//   }
+// });
