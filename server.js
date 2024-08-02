@@ -3,6 +3,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const teacherRoutes = require('./routes/TeacherRoutes');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 
@@ -268,11 +270,62 @@ app.post('/api/quiz/by-ids', async (req, res) => {
 });
 
 
+//***************************************************** adding authentication ********************
+// app.post('/api/new-student', async (req, res) => {
+//   try {
+//     const { 
+//       username, 
+//       name, 
+//       classId, 
+//       section, 
+//       id, 
+//       age, 
+//       address, 
+//       phoneNumber, 
+//       teachers, 
+//       assignments, 
+//       correctquestions, 
+//       wrongquestions, 
+//       totalquestions, 
+//       schoolId, 
+//       studentResponse 
+//     } = req.body;
+
+//     const newStudent = new NewStudent({ 
+//       username, 
+//       name, 
+//       classId, 
+//       section, 
+//       id, 
+//       age, 
+//       address, 
+//       phoneNumber, 
+//       teachers, 
+//       assignments, 
+//       correctquestions, 
+//       wrongquestions, 
+//       totalquestions, 
+//       schoolId, 
+//       studentResponse 
+//     });
+
+//     const savedStudent = await newStudent.save();
+//     res.status(201).json(savedStudent);
+//   } catch (error) {
+//     console.error('Error creating student:', error);
+//     if (error.code === 11000) {
+//       res.status(400).json({ message: 'Duplicate key error: Username or ID already exists' });
+//     } else {
+//       res.status(500).json({ message: 'Server Error', error: error.message });
+//     }
+//   }
+// });
 
 app.post('/api/new-student', async (req, res) => {
   try {
     const { 
       username, 
+      password, 
       name, 
       classId, 
       section, 
@@ -289,8 +342,12 @@ app.post('/api/new-student', async (req, res) => {
       studentResponse 
     } = req.body;
 
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const newStudent = new NewStudent({ 
       username, 
+      password: hashedPassword, 
       name, 
       classId, 
       section, 
@@ -320,6 +377,7 @@ app.post('/api/new-student', async (req, res) => {
 });
 
 
+//*********************************************adding authentication******************************** */
 
 // to login student with username
 
@@ -338,6 +396,34 @@ app.get('/api/student/:username', async (req, res) => {
 });
 
 
+
+app.post('/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    // Find the student by username
+    const student = await NewStudent.findOne({ username });
+    if (!student) {
+      return res.status(400).json({ message: 'Invalid username or password' });
+    }
+
+    // Compare the password with the stored hashed password
+    const isMatch = await bcrypt.compare(password, student.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Invalid username or password' });
+    }
+
+    // Generate a JWT token
+    const token = jwt.sign({ id: student._id }, 'your_jwt_secret', { expiresIn: '1h' });
+
+    res.status(200).json({ token });
+  } catch (error) {
+    console.error('Error logging in student:', error);
+    res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+});
+
+//************************login studen with jwt***************************
 
 // give it quiz id and it will fetch all questions at the time
 app.get('/api/quizzes/:quizId/questions', async (req, res) => {
@@ -379,73 +465,6 @@ const apiKey = "AIzaSyDsEvPf8X0M03OkSaDqmyqy1EZubalOg7Y"; // Ensure the API key 
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
    
-// const runocr = async (imageUrl, questionstrings) => {
-//   const prompt = `the image will provide you a answer of question ${questionstrings} based on ncert bord and you have to judge the answer according to marking patern used by teachers. so at first give summery that the answer provided is correct, could be improved, or wrong or excellent then you have to give response in 3 steps that is first step- it is "correct" or "wrong" or "could be improved" second step- what is good things in answer, third step- what could be improved if it is not a perfect answer written, fourth step- give the perfect answer for that question`;
-
-//   try {
-//     const result = await model.generateContent([prompt, { imageUrl }]);
-//     return result.response.text();
-//   } catch (error) {
-//     throw new Error(`Error processing image: ${error.message}`);
-//   }
-// };
-
-// // Endpoint to handle response submission with image URLs
-// app.post('/api/responses', async (req, res) => {
-//   const { studentId, quizId, imageUrls, questionIds, questionstrings } = req.body;
-
-//   try {
-//     // Check if the student and quiz exist
-//     const student = await NewStudent.findById(studentId);
-//     const quiz = await Quiz.findById(quizId);
-//     if (!student || !quiz) {
-//       return res.status(404).send('Student or Quiz not found');
-//     }
-
-//     // Process each image URL
-//     const answers = await Promise.all(
-//       questionIds.map(async (questionId, index) => {
-//         const imageUrl = imageUrls[questionId];
-//         const questionstring = questionstrings[index];
-//         const geminiresponse = await runocr(imageUrl, questionstring);
-//         return {
-//           questionId,
-//           questionstring,
-//           answer: geminiresponse,
-//           geminiresponse,
-//           imageUrl,
-//         };
-//       })
-//     );
-
-//     // Check if a response already exists for the student
-//     let response = await Response.findOne({ student: studentId });
-
-//     if (response) {
-//       // If the response exists, add the new quiz to the quizzes array
-//       response.quizzes.push({
-//         quiz: quizId,
-//         answers,
-//       });
-//     } else {
-//       // If the response does not exist, create a new response
-//       response = new Response({
-//         student: studentId,
-//         quizzes: [{
-//           quiz: quizId,
-//           answers,
-//         }],
-//       });
-//     }
-
-//     // Save the response to the database
-//     await response.save();
-//     res.status(201).send('Response saved successfully');
-//   } catch (error) {
-//     console.error('Error saving response:', error);
-//     res.status(500).send('Server Error');
-//   }
-// });
 
 const cloudinary = require('cloudinary').v2;
 
@@ -542,17 +561,6 @@ app.post('/api/responses', upload.array('images'), async (req, res) => {
 
 
 
-// app.get('/api/responses/student/:studentId', async (req, res) => {
-//   const { studentId } = req.params;
-
-//   try {
-//     const responses = await Response.find({ student: studentId }).populate('quizzes.quiz').populate('quizzes.answers.questionId');
-//     res.status(200).json(responses);
-//   } catch (error) {
-//     console.error('Error fetching responses:', error);
-//     res.status(500).send('Server Error');
-//   }
-// });
 
 app.get('/api/responses/student/:studentId', async (req, res) => {
   const { studentId } = req.params;
@@ -577,159 +585,3 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// app.post('/api/responses', async (req, res) => {
-//   const { studentId, quizId, answers } = req.body;
-
-//   try {
-//     // Check if the student and quiz exist
-//     const student = await NewStudent.findById(studentId);
-//     const quiz = await Quiz.findById(quizId);
-//     if (!student || !quiz) {
-//       return res.status(404).send('Student or Quiz not found');
-//     }
-
-//     // Create a new response
-//     const newResponse = new Response({
-//       student: studentId,
-//       quizzes: [{
-//         quiz: quizId,
-//         answers: answers.map(answer => ({
-//           questionId: answer.questionId,
-//           questionstring: answer.questionstring,
-//           answer: answer.answer
-//         }))
-//       }]
-//     });
-
-//     await newResponse.save();
-//     res.status(201).send('Response saved successfully');
-//   } catch (error) {
-//     console.error('Error saving response:', error);
-//     res.status(500).send('Server Error');
-//   }
-// });
-
-
-// app.post('/api/responses', async (req, res) => {
-//   const { studentId, quizId, answers } = req.body;
-
-//   try {
-//     // Check if the student and quiz exist
-//     const student = await NewStudent.findById(studentId);
-//     const quiz = await Quiz.findById(quizId);
-//     if (!student || !quiz) {
-//       return res.status(404).send('Student or Quiz not found');
-//     }
-
-//     // Check if a response already exists for the student
-//     let response = await Response.findOne({ student: studentId });
-
-//     if (response) {
-//       // If the response exists, add the new quiz to the quizzes array
-//       response.quizzes.push({
-//         quiz: quizId,
-//         answers: answers.map(answer => ({
-//           questionId: answer.questionId,
-//           questionstring: answer.questionstring,
-//           answer: answer.answer
-//         }))
-//       });
-//     } else {
-//       // If the response does not exist, create a new response
-//       response = new Response({
-//         student: studentId,
-//         quizzes: [{
-//           quiz: quizId,
-//           answers: answers.map(answer => ({
-//             questionId: answer.questionId,
-//             questionstring: answer.questionstring,
-//             answer: answer.answer
-//           }))
-//         }]
-//       });
-//     }
-
-//     // Save the response to the database
-//     await response.save();
-//     res.status(201).send('Response saved successfully');
-//   } catch (error) {
-//     console.error('Error saving response:', error);
-//     res.status(500).send('Server Error');
-//   }
-// });

@@ -3,6 +3,7 @@ const Class = require('./Class');
 
 const newStudentSchema = new mongoose.Schema({
   username: { type: String, unique: true, required: true },
+  password: { type: String, required: true},
   name: { type: String, required: true },
   //class: { type: String, required: true },
   section: { type: String, required: true },
