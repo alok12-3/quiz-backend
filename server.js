@@ -514,6 +514,13 @@ app.post('/api/responses', upload.array('images'), async (req, res) => {
     if (!student || !quiz) {
       return res.status(404).send('Student or Quiz not found');
     }
+    
+     // Add the quizId to the submitedQuiz array if it doesn't already exist
+     if (!student.submitedQuiz.includes(quizId)) {
+      student.submitedQuiz.push(quizId);
+      await student.save();  // Save the updated student document to the database
+    }
+
 
     // Process each uploaded image
     const answers = await Promise.all(
@@ -557,9 +564,55 @@ app.post('/api/responses', upload.array('images'), async (req, res) => {
     res.status(500).send('Server Error');
   }
 });
+//************************************************the api to fetch pending quiz */
 
+app.get('/quizzespending/:studentId', async (req, res) => {
+  try {
+      const { studentId } = req.params;
 
+      // 1. Fetch the student data using studentId
+      const student = await NewStudent.findById(studentId)
+          .populate('submitedQuiz', '_id') // Populate submitedQuiz to get quiz IDs
+          .populate('classId', 'quizId')   // Populate classId to get the class and its quiz IDs
+          .exec();
 
+      if (!student) {
+          return res.status(404).json({ error: 'Student not found' });
+      }
+
+      // 2. Get the classId and the submitedQuiz array from the student
+      const { classId, submitedQuiz } = student;
+      const submitedQuizIds = submitedQuiz.map(quiz => quiz._id);
+
+      // 3. Fetch the class data using classId to get the quizId array
+      const classData = await Class.findById(classId)
+          .populate('quizId', '_id') // Populate quizId to get quiz IDs
+          .exec();
+
+      if (!classData) {
+          return res.status(404).json({ error: 'Class not found' });
+      }
+
+      const classQuizIds = classData.quizId.map(quiz => quiz._id);
+
+      // 4. Find the difference between classQuizIds and submitedQuizIds
+      const unsubmittedQuizIds = classQuizIds.filter(quizId =>
+          !submitedQuizIds.includes(quizId.toString())
+      );
+
+      // 5. Fetch the quiz details using the unsubmittedQuizIds
+      const unsubmittedQuizzes = await Quiz.find({ _id: { $in: unsubmittedQuizIds } });
+
+      // 6. Return the quizzes to the frontend
+      res.status(200).json(unsubmittedQuizzes);
+
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Server error' });
+  }
+});
+
+//*************************************************api to fetch pending quiz */
 
 
 app.get('/api/responses/student/:studentId', async (req, res) => {

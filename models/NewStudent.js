@@ -18,7 +18,8 @@ const newStudentSchema = new mongoose.Schema({
   wrongquestions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Question' }],
   totalquestions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Question' }],
   schoolId: { type: String, required: true },
-  studentResponse: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Response', required: true }]
+  studentResponse: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Response', required: true }],
+  submitedQuiz: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Quiz'}]
 });
 
 module.exports = mongoose.model('NewStudent', newStudentSchema);
